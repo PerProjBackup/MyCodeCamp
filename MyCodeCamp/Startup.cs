@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AutoMapper;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -43,6 +45,9 @@ namespace MyCodeCamp
       services.AddTransient<CampSeeder>();
       services.AddTransient<CampIdentitySeeder>();
       services.AddScoped<ICampRepository, CampRepository>();
+
+      services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+      services.AddAutoMapper();
 
       services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1)
         .AddJsonOptions(opt => opt.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore);
