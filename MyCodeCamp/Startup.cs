@@ -24,11 +24,11 @@ namespace MyCodeCamp
   {
     public Startup(IConfiguration configuration)
     {
-      _config = configuration;
+      _config = (IConfigurationRoot)configuration;
     }
 
     //public IConfiguration Configuration { get; }
-    IConfiguration _config { get; }
+    IConfigurationRoot _config { get; }
 
     // This method gets called by the runtime. Use this method to add services to the container.
     public void ConfigureServices(IServiceCollection services)
