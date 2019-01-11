@@ -35,10 +35,19 @@ namespace MyCodeCamp.Models
               StateProvince = c.LocationStateProvince,
               PostalCode = c.LocationPostalCode,
               Country = c.LocationCountry   }));
-            //((camp, model, unused, ctx) => {
-            //  var url = (IUrlHelper)ctx.HttpContext.Items["UrlHelper"];
-            //  return url.Link("CampGet", new { id = camp.Id });   }));
+      //((camp, model, unused, ctx) => {
+      //  var url = (IUrlHelper)ctx.HttpContext.Items["UrlHelper"];
+      //  return url.Link("CampGet", new { id = camp.Id });   }));
       //
+      CreateMap<Speaker, SpeakerModel>()
+        .ForMember(s => s.Url,
+            opt => opt.MapFrom<SpeakerUrlResolver>())
+        .ReverseMap();
+
+      CreateMap<Talk, TalkModel>()
+        .ForMember(s => s.Url,
+            opt => opt.MapFrom<TalkUrlResolver>())
+        .ReverseMap();
 
     }
   }
