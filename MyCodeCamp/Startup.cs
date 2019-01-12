@@ -22,23 +22,20 @@ namespace MyCodeCamp
 {
   public class Startup
   {
-    public Startup(IConfiguration configuration)
-    {
-      _config = (IConfigurationRoot)configuration;
-    }
+    public Startup(IConfiguration configuration, IHostingEnvironment env)
+    { _config = (IConfigurationRoot)configuration; _env = env; }
 
     //public IConfiguration Configuration { get; }
     IConfigurationRoot _config { get; }
+
+    IHostingEnvironment _env;
 
     // This method gets called by the runtime. Use this method to add services to the container.
     public void ConfigureServices(IServiceCollection services)
     {
       services.AddSingleton(_config);
-
-      services.AddIdentity<CampUser, IdentityRole>(cfg => {
-        cfg.User.RequireUniqueEmail = true; })
-        .AddEntityFrameworkStores<CampContext>();
-
+      services.AddSingleton(_env);
+      
       services.AddDbContext<CampContext>(cfg => {
         cfg.UseSqlServer(_config.GetConnectionString("CampConnection"));  });
 
@@ -49,23 +46,49 @@ namespace MyCodeCamp
       services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
       services.AddAutoMapper();
 
-      services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1)
+      services.AddIdentity<CampUser, IdentityRole>(cfg => {
+        cfg.User.RequireUniqueEmail = true; })
+        .AddEntityFrameworkStores<CampContext>();
+
+      //services.Configure<IdentityOptions>();
+
+      services.ConfigureApplicationCookie(options => {
+        options.Events.OnRedirectToLogin = ctx => {
+          if (ctx.Request.Path.StartsWithSegments("/api") &&
+              ctx.Response.StatusCode == 200) ctx.Response.StatusCode = 401;
+          return Task.CompletedTask; };
+        options.Events.OnRedirectToAccessDenied = ctx => {
+          if (ctx.Request.Path.StartsWithSegments("/api") &&
+              ctx.Response.StatusCode == 200) ctx.Response.StatusCode = 403;
+          return Task.CompletedTask; };       });
+
+      services.AddCors(cfg => { cfg.AddPolicy("Wildermuth", bldr =>
+          bldr.AllowAnyHeader()
+          .AllowAnyMethod()
+          .WithOrigins("http://wildermuth.com"));
+        cfg.AddPolicy("AnyGET", bldr =>
+          bldr.AllowAnyHeader()
+          .WithMethods("GET")
+          .AllowAnyOrigin()); });
+
+      services.AddMvc(opt => {
+        if (_env.IsDevelopment()) { opt.SslPort = 44388; }
+        opt.Filters.Add(new RequireHttpsAttribute());
+      }
+        ).SetCompatibilityVersion(CompatibilityVersion.Version_2_1)
         .AddJsonOptions(opt => opt.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore);
     }
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
     public void Configure(IApplicationBuilder app, IHostingEnvironment env)
     {
-      if (env.IsDevelopment())
-      {
-        app.UseDeveloperExceptionPage();
-      }
-      else
-      {
-        app.UseHsts();
-      }
+      if (env.IsDevelopment()) { app.UseDeveloperExceptionPage();
+      } else { app.UseHsts(); }
 
       app.UseHttpsRedirection();
+
+      app.UseAuthentication();
+
       app.UseMvc(config => {
         //config.MapRoute("MainAPIRoute", "api/{controller}/{action}");
       });

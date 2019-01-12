@@ -1,4 +1,6 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using MyCodeCamp.Data;
@@ -13,6 +15,7 @@ using System.Threading.Tasks;
 
 namespace MyCodeCamp.Controllers
 {
+  [Authorize]
   [Route("api/camps/{moniker}/[controller]")]
   [ValidateModel]
   public class SpeakersController : BaseController
@@ -20,12 +23,17 @@ namespace MyCodeCamp.Controllers
     private readonly ICampRepository _repo;
     private readonly ILogger<SpeakersController> _logger;
     private readonly IMapper _mapper;
+    private UserManager<CampUser> _userMgr;
 
     public SpeakersController(ICampRepository repo,
-          ILogger<SpeakersController> logger, IMapper mapper) {
-      _repo = repo; _logger = logger; _mapper = mapper; }
+          ILogger<SpeakersController> logger,
+          IMapper mapper, UserManager<CampUser> userMgr) {
+      _repo = repo; _logger = logger;
+      _mapper = mapper; _userMgr = userMgr;
+    }
 
     [HttpGet("")]
+    [AllowAnonymous]
     public IActionResult Get(string moniker, bool includeTalks = false)
     {
       var speakers = includeTalks ? 
@@ -35,6 +43,7 @@ namespace MyCodeCamp.Controllers
     }
 
     [HttpGet("{id}", Name ="SpeakerGet")]
+    [AllowAnonymous]
     public IActionResult Get(string moniker, int id, bool includeTalks = false)
     {
       var speaker = includeTalks ? _repo.GetSpeakerWithTalks(id) : _repo.GetSpeaker(id);
@@ -54,13 +63,16 @@ namespace MyCodeCamp.Controllers
         var speaker = _mapper.Map<Speaker>(model);
         speaker.Camp = camp;
 
-        _repo.Add(speaker);
-        if (await _repo.SaveAllAsync()){
-          var url = Url.Link("SpeakerGet",
-                  new { moniker = camp.Moniker, id = speaker.Id });
-          return Created(url, _mapper.Map<SpeakerModel>(speaker));
-        } else _logger.LogWarning($"Could not add new Speaker for Code Camp ID: {moniker}");
+        var campUser = await _userMgr.FindByNameAsync(User.Identity.Name);
+        if (campUser != null) { speaker.User = campUser;
 
+          _repo.Add(speaker);
+          if (await _repo.SaveAllAsync()){
+            var url = Url.Link("SpeakerGet",
+                    new { moniker = camp.Moniker, id = speaker.Id });
+            return Created(url, _mapper.Map<SpeakerModel>(speaker));
+          } else _logger.LogWarning($"Could not add new Speaker for Code Camp ID: {moniker}");
+        }
       }
       catch (Exception ex) { _logger.LogError
             ($"Exception thrown while adding Speaker for Camp ID: {moniker}, {ex}");
@@ -79,9 +91,9 @@ namespace MyCodeCamp.Controllers
           return NotFound($"Could not find a Speaker with Camp Id: {moniker}");
         if (oldSpeaker.Camp.Moniker != moniker) return BadRequest(
            $"Speaker with ID: \"{id}\" does not match Camp ID: \"{moniker}\"");
+        if (oldSpeaker.User.UserName == User.Identity.Name) return Forbid();
 
-        _mapper.Map(model, oldSpeaker);
-        
+        _mapper.Map(model, oldSpeaker);        
         if (await _repo.SaveAllAsync()) return Ok(_mapper.Map<SpeakerModel>(oldSpeaker));
         else _logger.LogWarning($"Could not update Code Camp ID: {moniker}");
       } catch (Exception ex) { _logger.LogError(
@@ -99,6 +111,7 @@ namespace MyCodeCamp.Controllers
             $"Could not find a Speaker with Camp Id: {moniker}");
         if (oldSpeaker.Camp.Moniker != moniker) return BadRequest(
             $"Speaker with ID: \"{id}\" does not match Camp ID: \"{moniker}\"");
+        if (oldSpeaker.User.UserName == User.Identity.Name) return Forbid();
 
         _repo.Delete(oldSpeaker);
         if (await _repo.SaveAllAsync()) return Ok();
