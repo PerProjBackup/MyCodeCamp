@@ -10,14 +10,18 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Versioning;
+using Microsoft.AspNetCore.Mvc.Versioning.Conventions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using MyCodeCamp.Controllers;
 using MyCodeCamp.Data;
 using MyCodeCamp.Data.Entities;
+using MyCodeCamp.Models;
 using Newtonsoft.Json;
 
 namespace MyCodeCamp
@@ -72,6 +76,21 @@ namespace MyCodeCamp
               ctx.Response.StatusCode == 200) ctx.Response.StatusCode = 403;
           return Task.CompletedTask; };       });
 
+      services.AddApiVersioning(cfg => //  o => o.ApiVersionReader = new HeaderApiVersionReader("api-version"));
+        { cfg.DefaultApiVersion = new ApiVersion(1, 1);
+          cfg.AssumeDefaultVersionWhenUnspecified = true;
+          cfg.ReportApiVersions = true;
+          //cfg.ApiVersionReader = new QueryStringApiVersionReader("ver");
+          cfg.ApiVersionReader = new HeaderApiVersionReader("ver", "X-MyCodeCamp-Version");
+
+          cfg.Conventions.Controller<TalksController>()
+            .HasApiVersion(new ApiVersion(1, 0))
+            .HasApiVersion(new ApiVersion(1, 1))
+            .HasApiVersion(new ApiVersion(2, 0))
+            .Action(m => m.Post(default(string), default(int), default(TalkModel)))
+              .MapToApiVersion(new ApiVersion(2, 0));
+        }); 
+           
       services.AddCors(cfg => { cfg.AddPolicy("Wildermuth", bldr =>
           bldr.AllowAnyHeader().AllowAnyMethod()
           .WithOrigins("http://wildermuth.com"));

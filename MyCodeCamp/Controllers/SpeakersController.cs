@@ -16,14 +16,16 @@ using System.Threading.Tasks;
 namespace MyCodeCamp.Controllers
 {
   [Authorize]
-  [Route("api/camps/{moniker}/[controller]")]
+  [Route("api/camps/{moniker}/speakers")]
   [ValidateModel]
+  [ApiVersion("1.0")]
+  [ApiVersion("1.1")]
   public class SpeakersController : BaseController
   {
-    private readonly ICampRepository _repo;
-    private readonly ILogger<SpeakersController> _logger;
-    private readonly IMapper _mapper;
-    private UserManager<CampUser> _userMgr;
+    protected readonly ICampRepository _repo;
+    protected readonly ILogger<SpeakersController> _logger;
+    protected readonly IMapper _mapper;
+    protected UserManager<CampUser> _userMgr;
 
     public SpeakersController(ICampRepository repo,
           ILogger<SpeakersController> logger,
@@ -32,18 +34,31 @@ namespace MyCodeCamp.Controllers
       _mapper = mapper; _userMgr = userMgr;
     }
 
-    [HttpGet("")]
+    [HttpGet]
+    [MapToApiVersion("1.0")]
     [AllowAnonymous]
-    public IActionResult Get(string moniker, bool includeTalks = false)
+    public virtual IActionResult Get(string moniker, bool includeTalks = false)
     {
-      var speakers = includeTalks ? 
+      var speakers = includeTalks ?
           _repo.GetSpeakersByMonikerWithTalks(moniker) : _repo.GetSpeakersByMoniker(moniker);
 
       return Ok(_mapper.Map<IEnumerable<SpeakerModel>>(speakers));
     }
 
-    [HttpGet("{id}", Name ="SpeakerGet")]
+    [HttpGet]
+    [MapToApiVersion("1.1")]
     [AllowAnonymous]
+    public virtual IActionResult GetWithCount(string moniker, bool includeTalks = false)
+    {
+      var speakers = includeTalks ?
+          _repo.GetSpeakersByMonikerWithTalks(moniker) : _repo.GetSpeakersByMoniker(moniker);
+
+      return Ok(new { count = speakers.Count(),
+        results = _mapper.Map<IEnumerable<SpeakerModel>>(speakers)});
+    }
+
+    [HttpGet("{id}", Name ="SpeakerGet")]
+    //[AllowAnonymous]
     public IActionResult Get(string moniker, int id, bool includeTalks = false)
     {
       var speaker = includeTalks ? _repo.GetSpeakerWithTalks(id) : _repo.GetSpeaker(id);
@@ -54,6 +69,7 @@ namespace MyCodeCamp.Controllers
     }
 
     [HttpPost]
+    [Authorize]
     public async Task<IActionResult> Post(string moniker, [FromBody]SpeakerModel model) {
       try {        
         _logger.LogInformation($"Creating a new Speaker for Code Camp ID: {moniker}");
@@ -81,6 +97,7 @@ namespace MyCodeCamp.Controllers
     }
 
     [HttpPut("{id}")]
+    [Authorize]
     public async Task<IActionResult> Put(string moniker,
                               int id, [FromBody]SpeakerModel model)
     {
@@ -102,6 +119,7 @@ namespace MyCodeCamp.Controllers
           $"Could not update Speaker with ID: {id} and Camp ID: {moniker}"); }
 
     [HttpDelete("{id}")]
+    [Authorize]
     public async Task<IActionResult> Delete(string moniker, int id)
     {
       try {
