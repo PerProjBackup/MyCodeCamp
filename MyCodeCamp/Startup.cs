@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Builder;
@@ -14,6 +15,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using MyCodeCamp.Data;
 using MyCodeCamp.Data.Entities;
 using Newtonsoft.Json;
@@ -50,6 +52,14 @@ namespace MyCodeCamp
         cfg.User.RequireUniqueEmail = true; })
         .AddEntityFrameworkStores<CampContext>();
 
+      services.AddAuthentication() // .AddCookie()
+        .AddJwtBearer(cfg => {
+          cfg.TokenValidationParameters = new TokenValidationParameters() {
+            ValidIssuer = _config["Tokens:Issuer"],
+            ValidAudience = _config["Tokens:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                  Encoding.UTF8.GetBytes(_config["Tokens:Key"])) }; });
+
       //services.Configure<IdentityOptions>();
 
       services.ConfigureApplicationCookie(options => {
@@ -63,12 +73,10 @@ namespace MyCodeCamp
           return Task.CompletedTask; };       });
 
       services.AddCors(cfg => { cfg.AddPolicy("Wildermuth", bldr =>
-          bldr.AllowAnyHeader()
-          .AllowAnyMethod()
+          bldr.AllowAnyHeader().AllowAnyMethod()
           .WithOrigins("http://wildermuth.com"));
         cfg.AddPolicy("AnyGET", bldr =>
-          bldr.AllowAnyHeader()
-          .WithMethods("GET")
+          bldr.AllowAnyHeader().WithMethods("GET")
           .AllowAnyOrigin()); });
 
       services.AddMvc(opt => {
@@ -77,6 +85,10 @@ namespace MyCodeCamp
       }
         ).SetCompatibilityVersion(CompatibilityVersion.Version_2_1)
         .AddJsonOptions(opt => opt.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore);
+
+      services.AddAuthorization(cfg =>  { cfg.AddPolicy("SuperUsers",
+        policy => policy.RequireClaim("SuperUser", "True")); });
+
     }
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

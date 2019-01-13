@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
@@ -12,8 +13,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace MyCodeCamp.Controllers
-{
-  [Authorize]
+{ 
+  [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
   [EnableCors("AnyGet")]
   [Route("api/[controller]")]
   [ValidateModel]
@@ -55,6 +56,7 @@ namespace MyCodeCamp.Controllers
     }
 
     [EnableCors("Wildermuth")]
+    [Authorize(Policy = "SuperUsers")]
     [HttpPost]
     public async Task<IActionResult> Post([FromBody]CampModel model)
     {
