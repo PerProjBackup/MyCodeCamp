@@ -58,7 +58,7 @@ namespace MyCodeCamp.Controllers
     }
 
     [HttpGet("{id}", Name ="SpeakerGet")]
-    //[AllowAnonymous]
+    [AllowAnonymous]
     public IActionResult Get(string moniker, int id, bool includeTalks = false)
     {
       var speaker = includeTalks ? _repo.GetSpeakerWithTalks(id) : _repo.GetSpeaker(id);

@@ -52,6 +52,8 @@ namespace MyCodeCamp
       services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
       services.AddAutoMapper();
 
+      services.AddMemoryCache();
+
       services.AddIdentity<CampUser, IdentityRole>(cfg => {
         cfg.User.RequireUniqueEmail = true; })
         .AddEntityFrameworkStores<CampContext>();
